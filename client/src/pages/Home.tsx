@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, ExternalLink, GraduationCap, House, Loader2, MessageCircle, Moon, Plus, Send, Sun, User } from "lucide-react";
 import { useChat, type Message } from "@/hooks/use-chat";
+import { EricaFeed } from "@/components/EricaFeed";
 
 const STORAGE_KEY = "erica_blog_chat_history";
 const PROFILE_STORAGE_KEY = "erica_student_profile";
@@ -40,29 +41,6 @@ const collegeDepartments = {
 
 const emptyProfile = (): StudentProfile => ({ campus: "ERICA", college: "", department: "" });
 
-const sourceCards = [
-  {
-    title: "홈페이지",
-    url: "https://www.hanyang.ac.kr/web/www/erica-campus",
-    description: "학사, 장학, 등록, 예비군, 교통, 공식 공지처럼 기준과 절차가 중요한 정보를 확인합니다.",
-  },
-  {
-    title: "블로그",
-    url: "https://blog.naver.com/hyerica4473",
-    description: "건물 위치, 캠퍼스 생활, 학과 소개, 행사 후기처럼 자세한 설명과 맥락이 필요한 정보를 확인합니다.",
-  },
-  {
-    title: "총학생회 인스타",
-    url: "https://www.instagram.com/hanyang_erica_stu/",
-    description: "축제, 제휴, 학생회비, 간식사업, 공동구매, 학생 복지사업처럼 총학생회가 운영하는 정보를 확인합니다.",
-  },
-  {
-    title: "포털",
-    url: "https://portal.hanyang.ac.kr/",
-    description: "HY-in 로그인 후 수강신청, 휴학/복학 등 학적변동, 증명, 개인 학사 업무를 처리합니다.",
-  },
-];
-
 function makeWelcomeMessage(): Message {
   return {
     id: "welcome",
@@ -91,7 +69,7 @@ export default function Home() {
       return [makeWelcomeMessage()];
     }
   });
-  const [showHome, setShowHome] = useState(() => !messages.some((message) => message.role === "user"));
+  const [showHome, setShowHome] = useState(true);
   const [input, setInput] = useState("");
   const [profile, setProfile] = useState<StudentProfile>(() => {
     if (typeof window === "undefined") {
@@ -118,7 +96,7 @@ export default function Home() {
   });
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === "undefined") return true;
-    return localStorage.getItem("theme") !== "light";
+    return localStorage.getItem("theme") === "dark";
   });
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatMutation = useChat();
@@ -249,31 +227,14 @@ export default function Home() {
             </div>
             <div className="min-w-0">
               <h1 className="truncate text-lg font-bold sm:text-xl">Convergence Service Design</h1>
-              <p className="hidden text-xs text-muted-foreground sm:block">한양대학교 ERICA 캠퍼스 정보 검색 챗봇</p>
+              <p className="hidden text-xs text-muted-foreground sm:block">한양대학교 ERICA 통합 정보</p>
             </div>
           </div>
 
           <div className="flex items-center gap-1">
-            {hasStartedChat && (
-              <button
-                type="button"
-                onClick={() => setShowHome((current) => !current)}
-                className="flex h-9 items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label={showHome ? "대화로 돌아가기" : "홈 화면으로 가기"}
-                title={showHome ? "대화로 돌아가기" : "홈 화면으로 가기"}
-              >
-                {showHome ? <MessageCircle className="h-4 w-4" /> : <House className="h-4 w-4" />}
-                <span className="hidden sm:inline">{showHome ? "대화" : "홈"}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={resetChat}
-              className="flex h-9 items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">새 대화</span>
-            </button>
+            <button type="button" onClick={() => setShowHome(true)} className={`flex h-9 items-center gap-2 rounded-md px-2 text-sm hover:bg-muted ${showHome ? "font-semibold text-foreground" : "text-muted-foreground"}`} aria-label="정보 피드" title="정보 피드"><House className="h-4 w-4" /><span className="hidden sm:inline">정보</span></button>
+            <button type="button" onClick={() => setShowHome(false)} className={`flex h-9 items-center gap-2 rounded-md px-2 text-sm hover:bg-muted ${!showHome ? "font-semibold text-foreground" : "text-muted-foreground"}`} aria-label="AI 질문" title="AI 질문"><MessageCircle className="h-4 w-4" /><span className="hidden sm:inline">AI 질문</span></button>
+            {!showHome && <button type="button" onClick={resetChat} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="새 대화" title="새 대화"><Plus className="h-4 w-4" /></button>}
             <button
               type="button"
               onClick={() => setIsDarkMode((value) => !value)}
@@ -288,16 +249,12 @@ export default function Home() {
 
       <main className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col px-4">
         {showHome ? (
-          <div className="flex flex-1 flex-col justify-center py-10">
-            <section className="space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">ERICA 캠퍼스 정보 안내</h2>
-                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                  정보 성격에 따라 공식 홈페이지, ERICA 블로그, 총학생회 인스타그램, HY-in 포털을 구분해 확인합니다.
-                </p>
-              </div>
-
-              <div className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
+          <div className="flex-1 space-y-7 py-6 sm:py-8">
+            <div className="space-y-1"><h2 className="text-xl font-bold sm:text-2xl">ERICA 정보 모아보기</h2><p className="text-sm text-muted-foreground">학교 공지와 블로그 공개 글을 한곳에서 찾아보세요.</p></div>
+            <EricaFeed />
+            <details className="border-t border-border pt-5">
+              <summary className="cursor-pointer text-sm font-medium">내 학과 설정 <span className="ml-2 font-normal text-muted-foreground">{profile.department || "선택 안 함"}</span></summary>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="space-y-2 text-sm">
                   <span className="font-medium text-foreground">단과대학</span>
                   <select
@@ -334,32 +291,8 @@ export default function Home() {
                   </select>
                 </label>
               </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                {sourceCards.map((source) => (
-                  <a
-                    key={source.title}
-                    href={source.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-lg border border-border bg-card p-4 text-left text-sm text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
-                  >
-                    <div className="mb-2 flex items-center gap-2 font-semibold text-foreground">
-                      <ExternalLink className="h-4 w-4 text-primary" />
-                      {source.title}
-                    </div>
-                    <p className="leading-6">{source.description}</p>
-                  </a>
-                ))}
-              </div>
-
-              <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                {renderQuestionForm()}
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  질문을 보내면 대화 화면으로 전환됩니다.
-                </p>
-              </div>
-            </section>
+            </details>
+            <section className="space-y-3 border-t border-border pt-5"><h2 className="text-base font-semibold">AI에게 질문</h2>{renderQuestionForm()}</section>
           </div>
         ) : (
           <>

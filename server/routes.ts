@@ -14,6 +14,7 @@ import * as embeddingService from "./embedding-service";
 import * as ragService from "./rag-service";
 import * as ollamaService from "./ollama-service";
 import * as ericaBlogService from "./erica-blog-service";
+import { filterFeed, getEricaFeed } from "./erica-feed-service";
 import { inferColumnType as inferUploadedColumnType } from "./column-type-utils";
 
 const openai = new OpenAI({
@@ -424,6 +425,19 @@ export async function registerRoutes(
     } catch (err) {
       console.error("ERICA blog chat error:", err);
       res.status(500).json({ message: "ERICA 블로그 검색 중 오류가 발생했습니다" });
+    }
+  });
+
+  app.get("/api/erica-feed", async (req, res) => {
+    try {
+      const feed = await getEricaFeed();
+      const query = typeof req.query.q === "string" ? req.query.q.slice(0, 100) : "";
+      const source = typeof req.query.source === "string" ? req.query.source : "";
+      const category = typeof req.query.category === "string" ? req.query.category : "";
+      res.json({ ...feed, items: filterFeed(feed.items, query, source, category) });
+    } catch (error) {
+      console.error("ERICA feed error:", error);
+      res.status(500).json({ message: "공지 목록을 불러오지 못했습니다." });
     }
   });
 

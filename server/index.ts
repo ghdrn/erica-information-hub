@@ -49,7 +49,7 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse && path !== "/api/erica-chat") {
+      if (capturedJsonResponse && path !== "/api/erica-chat" && path !== "/api/erica-feed") {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
