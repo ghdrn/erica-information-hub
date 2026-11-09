@@ -13,7 +13,7 @@ The app collects two public feeds: ERICA academic notices and the official ERICA
 
 1. Provision a PostgreSQL database (for example, Supabase). Use a server-side connection string with permission to create tables. Never put the password in frontend environment variables or commit it.
 2. Set `FEED_DATABASE_URL` in the app's server environment. The feed tables are created on first access and the app reads accumulated rows from this database.
-3. Publish this repository to the intended GitHub account (`ghdrn2401`) and merge this feature branch into the default branch. The repository is currently local-only; this workflow will not run until published.
+3. Publish this repository to the intended GitHub account and merge the feed changes into the default branch. Scheduled workflows only run from the default branch.
 4. Add the same connection string as a GitHub Actions repository secret named `FEED_DATABASE_URL`.
 5. Run the `Sync ERICA feed` workflow manually once and inspect its logs. The schedule is four times per day at 09:17, 13:17, 18:17, and 22:17 KST. A missing DB secret or failed source causes a failed run, not a silent success. Enable GitHub Actions failure notifications for the repository.
 
