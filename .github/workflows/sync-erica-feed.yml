@@ -1,0 +1,31 @@
+name: Sync ERICA feed
+
+on:
+  schedule:
+    # 09:17, 13:17, 18:17, 22:17 Asia/Seoul (UTC+9)
+    - cron: "17 0,4,9,13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: erica-feed-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Sync official feeds to PostgreSQL
+        run: npm run feed:sync
+        env:
+          FEED_DATABASE_URL: ${{ secrets.FEED_DATABASE_URL }}

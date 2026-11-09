@@ -8,6 +8,7 @@ server/public
 vite.config.ts.*
 *.tar.gz
 data/*.duckdb*
+data/erica-feed-index.json*
 dev-server.log
 *.traineddata
 .vscode/

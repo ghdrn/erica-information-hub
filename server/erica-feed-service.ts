@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { loadFeedIndex, saveFeedCollection, type FeedCollection } from "./erica-feed-store";
 
 export type FeedSource = "academic" | "blog";
 export type FeedCategory = "학사" | "장학" | "캠퍼스" | "기타";
@@ -18,6 +19,7 @@ export interface FeedResponse {
   items: FeedItem[];
   fetchedAt: string;
   unavailableSources: FeedSource[];
+  storageWarning?: boolean;
 }
 
 const ACADEMIC_RSS = "https://ehaksa.hanyang.ac.kr/notice?p_p_id=kr_ac_hanyang_bbs_web_portlet_BbsPortlet&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_cacheability=cacheLevelPage&_kr_ac_hanyang_bbs_web_portlet_BbsPortlet_cmd=rss";
@@ -25,6 +27,7 @@ const BLOG_RSS = "https://rss.blog.naver.com/hyerica4473.xml";
 const CACHE_MS = 10 * 60 * 1000;
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
 let cache: FeedResponse | null = null;
+let cacheExpiresAt = 0;
 let pending: Promise<FeedResponse> | null = null;
 
 function asArray(value: unknown): any[] {
@@ -99,33 +102,62 @@ async function fetchXml(url: string): Promise<string> {
   return response.text();
 }
 
-async function refresh(): Promise<FeedResponse> {
+export async function collectEricaFeed(fetcher: (url: string) => Promise<string> = fetchXml): Promise<FeedCollection> {
   const sources = await Promise.allSettled([
-    fetchXml(ACADEMIC_RSS).then(parseAcademicFeed),
-    fetchXml(BLOG_RSS).then(parseBlogFeed),
+    fetcher(ACADEMIC_RSS).then(parseAcademicFeed),
+    fetcher(BLOG_RSS).then(parseBlogFeed),
   ]);
   const unavailableSources: FeedSource[] = [];
+  const successfulSources: FeedSource[] = [];
   const items: FeedItem[] = [];
   for (let index = 0; index < sources.length; index++) {
     const result = sources[index];
-    if (result.status === "fulfilled") items.push(...result.value);
-    else {
-      const source: FeedSource = index === 0 ? "academic" : "blog";
+    const source: FeedSource = index === 0 ? "academic" : "blog";
+    if (result.status === "fulfilled" && (source !== "blog" || result.value.length > 0)) {
+      items.push(...result.value);
+      successfulSources.push(source);
+    } else {
       unavailableSources.push(source);
-      console.warn(`ERICA feed ${source} unavailable:`, result.reason);
+      console.warn(`ERICA feed ${source} unavailable:`, result.status === "rejected" ? result.reason : "empty RSS");
     }
   }
-  for (const source of unavailableSources) {
-    if (cache) items.push(...cache.items.filter((item) => item.source === source));
+  return { items, collectedAt: new Date().toISOString(), successfulSources, unavailableSources };
+}
+
+export async function syncEricaFeed(requireDatabase = false): Promise<FeedResponse> {
+  if (requireDatabase && !process.env.FEED_DATABASE_URL) {
+    throw new Error("FEED_DATABASE_URL is required for scheduled sync");
   }
-  const deduped = Array.from(new Map(items.map((item) => [item.url, item])).values());
-  deduped.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
-  return { items: deduped, fetchedAt: new Date().toISOString(), unavailableSources };
+  const collected = await collectEricaFeed();
+  if (!collected.successfulSources.length) throw new Error("Both ERICA feed sources failed");
+  const saved = await saveFeedCollection(collected, requireDatabase);
+  cache = saved;
+  cacheExpiresAt = Date.now() + CACHE_MS;
+  if (requireDatabase && collected.unavailableSources.length) {
+    throw new Error(`Feed sources failed: ${collected.unavailableSources.join(", ")}`);
+  }
+  return saved;
 }
 
 export async function getEricaFeed(): Promise<FeedResponse> {
-  if (cache && Date.now() - new Date(cache.fetchedAt).getTime() < CACHE_MS) return cache;
-  pending ??= refresh().then((result) => (cache = result)).finally(() => { pending = null; });
+  if (cache && Date.now() < cacheExpiresAt) return cache;
+  pending ??= (async () => {
+    const saved = await loadFeedIndex();
+    if (saved && Date.now() - new Date(saved.fetchedAt).getTime() < CACHE_MS) {
+      cache = saved;
+      cacheExpiresAt = Date.now() + CACHE_MS;
+      return saved;
+    }
+    try {
+      return await syncEricaFeed();
+    } catch (error) {
+      if (!saved) throw error;
+      console.warn("ERICA feed refresh failed; showing saved items:", error);
+      cache = { ...saved, unavailableSources: ["academic", "blog"] };
+      cacheExpiresAt = Date.now() + 60_000;
+      return cache;
+    }
+  })().finally(() => { pending = null; });
   return pending;
 }
 

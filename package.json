@@ -8,6 +8,8 @@
     "build": "tsx script/build.ts",
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test:feed": "tsx --test server/erica-feed-service.test.ts server/erica-feed-store.test.ts",
+    "feed:sync": "tsx script/sync-erica-feed.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

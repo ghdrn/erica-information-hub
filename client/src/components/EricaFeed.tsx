@@ -16,6 +16,7 @@ type FeedResponse = {
   items: FeedItem[];
   fetchedAt: string;
   unavailableSources: Array<"academic" | "blog">;
+  storageWarning?: boolean;
 };
 
 const sourceLinks = [
@@ -96,6 +97,7 @@ export function EricaFeed() {
       </div>
 
       {feed?.unavailableSources.length ? <p role="status" className="border-l-2 border-amber-500 bg-amber-500/10 px-3 py-2 text-xs text-foreground">일부 출처를 현재 확인할 수 없습니다. 해당 출처의 글은 이전 목록이거나 누락되었을 수 있으니 원문에서 확인해 주세요.</p> : null}
+      {feed?.storageWarning && <p role="status" className="border-l-2 border-amber-500 bg-amber-500/10 px-3 py-2 text-xs text-foreground">공유 DB에 연결되지 않아 이 서버의 로컬 저장본을 표시하고 있습니다. 다른 기기와 목록이 다를 수 있습니다.</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {loading && !feed && <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />공개 공지를 불러오는 중입니다.</div>}
       {!loading && !error && filtered.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">일치하는 공개 글이 없습니다. 다른 검색어를 입력하거나 원문 채널을 확인해 주세요.</p>}
@@ -113,7 +115,7 @@ export function EricaFeed() {
         ))}
       </div>
       {filtered.length > visibleCount && <button type="button" onClick={() => setVisibleCount((count) => count + 20)} className="w-full rounded-md border border-border py-2.5 text-sm font-medium hover:bg-muted">더 보기</button>}
-      {feed && <p className="border-t border-border pt-3 text-xs leading-5 text-muted-foreground">최근 공개 RSS 글 기준 · 마지막 확인 {new Date(feed.fetchedAt).toLocaleString("ko-KR")} · 포털과 인스타그램은 원문 채널에서 확인</p>}
+      {feed && <p className="border-t border-border pt-3 text-xs leading-5 text-muted-foreground">수집된 공개 RSS 글 기준 · 마지막 수집 {new Date(feed.fetchedAt).toLocaleString("ko-KR")} · 포털과 인스타그램은 원문 채널에서 확인</p>}
     </section>
   );
 }
